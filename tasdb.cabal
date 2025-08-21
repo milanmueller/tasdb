@@ -59,7 +59,7 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  TASDB.Core
+    exposed-modules:  Core
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -68,7 +68,7 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.19.2.0
+    build-depends:    base ^>=4.19.2.0, unordered-containers, time, containers, mtl
 
     -- Directories containing source files.
     hs-source-dirs:   src
