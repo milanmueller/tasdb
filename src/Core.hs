@@ -1,6 +1,5 @@
 module Core where
 
-import Control.Monad.Except
 import Control.Monad.State
 import Data.HashSet as HashSet
 import Data.List (intercalate)
@@ -13,15 +12,15 @@ import Data.Time
 type MetricName = String
 
 data MetricType
-  = TypeInt
-  | TypeBool
-  | TypeEnum (HashSet String)
+  = TInt
+  | TBool
+  | TEnum (HashSet String)
   deriving (Eq)
 
 instance Show MetricType where
-  show TypeInt = "Integer number"
-  show TypeBool = "Boolean"
-  show (TypeEnum opts) = "Enum [" ++ intercalate ", " (HashSet.toList opts) ++ "]"
+  show TInt = "Integer number"
+  show TBool = "Boolean"
+  show (TEnum opts) = "Enum [" ++ intercalate ", " (HashSet.toList opts) ++ "]"
 
 -- Metric Values --
 data MetricValue = VInt Int | VBool Bool | VEnum String
@@ -86,9 +85,9 @@ getMetricType name = do
     Nothing -> lift $ Left $ MetricNotFound name
 
 validateValue :: MetricType -> MetricValue -> Either DBError ()
-validateValue TypeInt (VInt _) = Right ()
-validateValue TypeBool (VBool _) = Right ()
-validateValue (TypeEnum validOpts) (VEnum val) =
+validateValue TInt (VInt _) = Right ()
+validateValue TBool (VBool _) = Right ()
+validateValue (TEnum validOpts) (VEnum val) =
   if HashSet.member val validOpts
     then Right ()
     else Left $ InvalidEnumValue "" val validOpts
@@ -135,8 +134,8 @@ mytest = do
   let initialState = emptyDBState
 
   let combinedOps = do
-        addMetric "cpu" TypeInt
-        addMetric "mode" (TypeEnum $ HashSet.fromList ["user", "system", "idle"])
+        addMetric "cpu" TInt
+        addMetric "mode" (TEnum $ HashSet.fromList ["user", "system", "idle"])
         let t = read "2023-01-01 14:00:00 UTC"
         addDataPoint "cpu" (VInt 85) t
         addDataPoint "mode" (VEnum "user") t
