@@ -1,18 +1,20 @@
 module Parser (
-  Cmd,
+  Cmd (..),
+  ValueCmd (..),
+  MetricCmd (..),
+  Type (..),
+  Val (..),
   parseCmd,
-  parse,
 )
 where
 
 import Control.Applicative (Alternative ((<|>)))
-import Text.Parsec (parse)
 import Text.Parsec.Language (emptyDef)
 import Text.Parsec.String (Parser)
 import Text.Parsec.Token
 
 -- AST
-data Val = VStr String | VInt Int deriving (Show)
+data Val = VStr String | VInt Int | VBool Bool deriving (Show)
 data Type = TInt | TBool | TEnum [String] deriving (Show)
 data MetricCmd = Add String Type deriving (Show)
 data ValueCmd = Insert String Val deriving (Show)
@@ -24,7 +26,7 @@ lexer = makeTokenParser style
   where
     style =
       emptyDef
-        { reservedNames = ["metric", "value", "insert", "int", "bool", "enum"]
+        { reservedNames = ["metric", "value", "insert", "int", "bool", "enum", "true", "false"]
         , reservedOpNames = ["[", "]", ","]
         }
 
@@ -32,7 +34,14 @@ lexer = makeTokenParser style
 parseVal :: Parser Val
 parseVal = parseStr <|> parseInt
   where
-    parseStr = VStr <$> stringLiteral lexer
+    parseStr =
+      ( reserved lexer "true"
+          >> return (VBool True)
+      )
+        <|> ( reserved lexer "false"
+                >> return (VBool False)
+            )
+        <|> VStr <$> stringLiteral lexer
     parseInt = VInt . fromInteger <$> integer lexer
 
 parseType :: Parser Type

@@ -91,6 +91,9 @@ executable tasdb
 
     -- Other library packages from which modules are imported.
     build-depends:
+        mtl ^>=2.3.1,
+        time ^>=1.12.2,
+        unordered-containers ^>=0.2.20,
         base ^>=4.19.2.0,
         tasdb,
         parsec

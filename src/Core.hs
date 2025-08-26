@@ -27,15 +27,15 @@ data MetricValue = VInt Int | VBool Bool | VEnum String
   deriving (Eq, Show)
 
 data DataPoint = DataPoint
-  { value :: MetricValue,
-    time :: UTCTime
+  { value :: MetricValue
+  , time :: UTCTime
   }
   deriving (Eq, Show)
 
 -- State -------------------------------------------------------------
 data DBState = DBState
-  { types :: Map MetricName MetricType,
-    values :: Map MetricName [DataPoint]
+  { types :: Map MetricName MetricType
+  , values :: Map MetricName [DataPoint]
   }
   deriving (Show, Eq)
 
@@ -45,6 +45,7 @@ data DBError
   | TypeMismatch MetricName MetricType MetricValue
   | InvalidEnumValue MetricName String (HashSet String)
   | MetricAlreadyExists MetricName
+  | InvalidInput String
 
 instance Show DBError where
   show (MetricNotFound name) = "Metric '" ++ name ++ "' not found"
@@ -63,6 +64,7 @@ instance Show DBError where
       ++ "'. Valid options: "
       ++ show (HashSet.toList validOpts)
   show (MetricAlreadyExists name) = "Metric '" ++ name ++ "' already exists"
+  show (InvalidInput msg) = "Invalid input: " ++ msg
 
 type DBMonad = StateT DBState (Either DBError)
 
@@ -75,7 +77,7 @@ addMetric name mtype = do
   s <- get
   case Map.lookup name (types s) of
     Just _ -> lift $ Left $ MetricAlreadyExists name
-    Nothing -> put $ s {types = Map.insert name mtype (types s)}
+    Nothing -> put $ s{types = Map.insert name mtype (types s)}
 
 getMetricType :: MetricName -> DBMonad MetricType
 getMetricType name = do
@@ -105,7 +107,7 @@ addDataPoint name val timestamp = do
       let oldPoints = Map.findWithDefault [] name (values s)
           newPoint = DataPoint val timestamp
           newPoints = newPoint : oldPoints
-      put $ s {values = Map.insert name newPoints (values s)}
+      put $ s{values = Map.insert name newPoints (values s)}
 
 getMetricData :: MetricName -> DBMonad [DataPoint]
 getMetricData name = do
@@ -122,8 +124,8 @@ deleteMetric name = do
     Just _ ->
       put $
         s
-          { types = Map.delete name (types s),
-            values = Map.delete name (values s)
+          { types = Map.delete name (types s)
+          , values = Map.delete name (values s)
           }
 
 listMetrics :: DBMonad [(MetricName, MetricType)]
