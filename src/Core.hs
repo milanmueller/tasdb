@@ -24,20 +24,35 @@ instance Show MetricType where
 
 -- Metric Values --
 data MetricValue = VInt Int | VBool Bool | VEnum String
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show MetricValue where
+  show (VInt i) = show i
+  show (VBool b) = show b
+  show (VEnum str) = str
 
 data DataPoint = DataPoint
   { value :: MetricValue
   , time :: UTCTime
   }
-  deriving (Eq, Show)
+  deriving (Eq)
+
+instance Show DataPoint where
+  show dp = "'" ++ show (value dp) ++ "' - at " ++ show (time dp)
 
 -- State -------------------------------------------------------------
 data DBState = DBState
   { types :: Map MetricName MetricType
   , values :: Map MetricName [DataPoint]
   }
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show DBState where
+  show st =
+    "Types:\n"
+      ++ intercalate "," (Prelude.map show (Map.toList (types st)))
+      ++ "\nValues:\n"
+      ++ intercalate "," (Prelude.map show (Map.toList (values st)))
 
 -- Errors
 data DBError
