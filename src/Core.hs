@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.HashSet as HashSet
 import Data.List (intercalate)
 import Data.Map as Map
+import Data.Serialize
 import Data.Time
 
 -- Mock State Representation --------------------------------------------------
@@ -25,6 +26,9 @@ instance Show MetricType where
 -- Metric Values --
 data MetricValue = VInt Int | VBool Bool | VEnum String
   deriving (Eq)
+
+-- instance Serialize MetricValue where
+--   put = undefined
 
 instance Show MetricValue where
   show (VInt i) = show i
@@ -89,79 +93,47 @@ emptyDBState = DBState Map.empty Map.empty
 -- Operations
 addMetric :: MetricName -> MetricType -> DBMonad ()
 addMetric name mtype = do
-  s <- get
+  s <- Control.Monad.State.get
   case Map.lookup name (types s) of
     Just _ -> lift $ Left $ MetricAlreadyExists name
-    Nothing -> put $ s{types = Map.insert name mtype (types s)}
+    Nothing -> Control.Monad.State.put $ s{types = Map.insert name mtype (types s)}
 
 getMetricType :: MetricName -> DBMonad MetricType
 getMetricType name = do
-  s <- get
+  s <- Control.Monad.State.get
   case Map.lookup name (types s) of
     Just mtype -> return mtype
     Nothing -> lift $ Left $ MetricNotFound name
 
-validateValue :: MetricType -> MetricValue -> Either DBError ()
-validateValue TInt (VInt _) = Right ()
-validateValue TBool (VBool _) = Right ()
-validateValue (TEnum validOpts) (VEnum val) =
+validateValue :: MetricType -> MetricValue -> MetricName -> Either DBError ()
+validateValue TInt (VInt _) _ = Right ()
+validateValue TBool (VBool _) _ = Right ()
+validateValue (TEnum validOpts) (VEnum val) mname =
   if HashSet.member val validOpts
     then Right ()
-    else Left $ InvalidEnumValue "" val validOpts
-validateValue expected actual = Left $ TypeMismatch "" expected actual
+    else Left $ InvalidEnumValue mname val validOpts
+validateValue expected actual mname = Left $ TypeMismatch mname expected actual
 
 addDataPoint :: MetricName -> MetricValue -> UTCTime -> DBMonad ()
 addDataPoint name val timestamp = do
   mtype <- getMetricType name
-  case validateValue mtype val of
-    Left (TypeMismatch _ expected actual) -> lift $ Left $ TypeMismatch name expected actual
-    Left (InvalidEnumValue _ val' opts) -> lift $ Left $ InvalidEnumValue name val' opts
+  case validateValue mtype val name of
     Left err -> lift $ Left err
     Right () -> do
-      s <- get
+      s <- Control.Monad.State.get
       let oldPoints = Map.findWithDefault [] name (values s)
           newPoint = DataPoint val timestamp
           newPoints = newPoint : oldPoints
-      put $ s{values = Map.insert name newPoints (values s)}
-
-getMetricData :: MetricName -> DBMonad [DataPoint]
-getMetricData name = do
-  s <- get
-  case Map.lookup name (types s) of
-    Nothing -> lift $ Left $ MetricNotFound name
-    Just _ -> return $ Map.findWithDefault [] name (values s)
+      Control.Monad.State.put $ s{values = Map.insert name newPoints (values s)}
 
 deleteMetric :: MetricName -> DBMonad ()
 deleteMetric name = do
-  s <- get
+  s <- Control.Monad.State.get
   case Map.lookup name (types s) of
     Nothing -> lift $ Left $ MetricNotFound name
     Just _ ->
-      put $
+      Control.Monad.State.put $
         s
           { types = Map.delete name (types s)
           , values = Map.delete name (values s)
           }
-
-listMetrics :: DBMonad [(MetricName, MetricType)]
-listMetrics = do gets (Map.toList . types)
-
-mytest :: IO ()
-mytest = do
-  let initialState = emptyDBState
-
-  let combinedOps = do
-        addMetric "cpu" TInt
-        addMetric "mode" (TEnum $ HashSet.fromList ["user", "system", "idle"])
-        let t = read "2023-01-01 14:00:00 UTC"
-        addDataPoint "cpu" (VInt 85) t
-        addDataPoint "mode" (VEnum "user") t
-        listMetrics
-
-  case runStateT combinedOps initialState of
-    Left err -> putStrLn $ "Fehler: " ++ show err
-    Right (metrics, finalState) -> do
-      putStrLn "Definierte Metriken:"
-      mapM_ print metrics
-      putStrLn "\nFinaler State:"
-      print finalState

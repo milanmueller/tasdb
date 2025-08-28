@@ -51,7 +51,6 @@ executeLine st line = do
           putStrLn "OK"
           repl newState
 
--- REPL
 repl :: DBState -> IO ()
 repl st = do
   putStr "> "

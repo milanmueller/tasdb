@@ -34,14 +34,10 @@ lexer = makeTokenParser style
 parseVal :: Parser Val
 parseVal = parseStr <|> parseInt
   where
-    parseStr =
-      ( reserved lexer "true"
-          >> return (VBool True)
-      )
-        <|> ( reserved lexer "false"
-                >> return (VBool False)
-            )
-        <|> VStr <$> stringLiteral lexer
+    parseStr = parseTrue <|> parseFalse <|> VStr <$> stringLiteral lexer
+      where
+        parseTrue = reserved lexer "true" >> return (VBool True)
+        parseFalse = reserved lexer "false" >> return (VBool False)
     parseInt = VInt . fromInteger <$> integer lexer
 
 parseType :: Parser Type
@@ -51,7 +47,7 @@ parseType = parseIntType <|> parseBoolType <|> parseEnumType
     parseBoolType = reserved lexer "bool" >> return TBool
     parseEnumType = do
       reserved lexer "enum"
-      enumValues <- brackets lexer (commaSep1 lexer (stringLiteral lexer))
+      enumValues <- brackets lexer $ commaSep1 lexer $ stringLiteral lexer
       return $ TEnum enumValues
 
 parseMetricCmd :: Parser MetricCmd
