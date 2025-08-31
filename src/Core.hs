@@ -4,10 +4,10 @@ module Core (
   MetricValue (..),
   MetricType (..),
   DataPoint (..),
-  DBState,
+  DBEnv,
   DBMonad,
   -- Functions
-  emptyDBState,
+  emptyDBEnv,
   addMetric,
   addDataPoint,
   deleteMetric,
@@ -58,13 +58,13 @@ instance Show DataPoint where
   show dp = "'" ++ show (value dp) ++ "' - at " ++ show (time dp)
 
 -- State -------------------------------------------------------------
-data DBState = DBState
+data DBEnv = DBEnv
   { types :: Map MetricName MetricType
   , values :: Map MetricName [DataPoint]
   }
   deriving (Eq)
 
-instance Show DBState where
+instance Show DBEnv where
   show st =
     "Types:\n"
       ++ intercalate "," (Prelude.map show (Map.toList (types st)))
@@ -98,10 +98,10 @@ instance Show DBError where
   show (MetricAlreadyExists name) = "Metric '" ++ name ++ "' already exists"
   show (InvalidInput msg) = "Invalid input: " ++ msg
 
-type DBMonad = StateT DBState (Either DBError)
+type DBMonad = StateT DBEnv (Either DBError)
 
-emptyDBState :: DBState
-emptyDBState = DBState Map.empty Map.empty
+emptyDBEnv :: DBEnv
+emptyDBEnv = DBEnv Map.empty Map.empty
 
 -- Operations
 addMetric :: MetricName -> MetricType -> DBMonad ()

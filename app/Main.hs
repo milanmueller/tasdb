@@ -30,7 +30,7 @@ runParserMCmd (Add mname mtype) = addMetric mname (runParserType mtype)
 runParserVCmd :: ValueCmd -> UTCTime -> DBMonad ()
 runParserVCmd (Insert mname val) = addDataPoint mname (runParserValue val)
 
-executeLine :: DBState -> String -> IO ()
+executeLine :: DBEnv -> String -> IO ()
 executeLine _ ":q" = putStrLn "Bye!"
 executeLine st ":show" = do
   print st
@@ -51,7 +51,7 @@ executeLine st line = do
           putStrLn "OK"
           repl newState
 
-repl :: DBState -> IO ()
+repl :: DBEnv -> IO ()
 repl st = do
   putStr "> "
   hFlush stdout
@@ -61,4 +61,4 @@ repl st = do
 main :: IO ()
 main = do
   putStrLn "Welcome to TASDB. Enter commands, :show to show current state or :q to exit."
-  repl emptyDBState
+  repl emptyDBEnv
